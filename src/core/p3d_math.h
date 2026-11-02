@@ -26,6 +26,7 @@ p3d_mat4 p3d_m4_rotate_xyz(p3d_vec3 r);   /* applies X, then Y, then Z */
 p3d_mat4 p3d_m4_trs(p3d_vec3 t, p3d_vec3 r, p3d_vec3 s);
 p3d_mat4 p3d_m4_perspective(float fovy, float aspect, float znear, float zfar);
 p3d_mat4 p3d_m4_inverse_rigid(p3d_mat4 m); /* inverse of rotation + translation (no scale) */
+p3d_mat4 p3d_m4_inverse_trs(p3d_vec3 t, p3d_vec3 r, p3d_vec3 s); /* inverse of p3d_m4_trs */
 p3d_vec4 p3d_m4_mul_v4(p3d_mat4 m, p3d_vec4 v);
 p3d_vec3 p3d_m4_mul_dir(p3d_mat4 m, p3d_vec3 v); /* upper 3x3 only */
 

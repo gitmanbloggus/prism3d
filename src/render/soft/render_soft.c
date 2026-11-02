@@ -285,6 +285,6 @@ const p3d_render_backend p3d_backend_soft = {
     soft_init, soft_shutdown,
     soft_mesh_create, soft_mesh_destroy,
     soft_texture_create, soft_texture_destroy,
-    soft_begin_frame, soft_draw, soft_end_frame,
+    soft_begin_frame, soft_draw, NULL, soft_end_frame,
     soft_read_pixels
 };

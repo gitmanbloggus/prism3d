@@ -1,0 +1,160 @@
+// raytrace.sipl: Prism3D raytracing demo. A mirror sphere, three orbiting spheres, a spinning cube
+// and a moving lamp over a reflective checker floor. R toggles raytracing/raster, Escape quits.
+add prism.def
+add raytrace.def
+
+func orbit [                    // ang = angle (0-255) of the selected object around the centre
+    v = sine(ang)
+    v - 100
+    v * 36                      // radius 3.6 units
+    prism.px = v
+    ang + 64                      // cosine
+    v = sine(ang)
+    v - 100
+    v * 36
+    prism.pz = v
+    return 0
+]
+
+func main [
+    prism.clear = 0x0E1420
+    prism.ambient = 0x16161E
+    prism.bounces = 3
+    prism.mode = 1
+    m = prism.mode
+    if m = 0 [
+        prism.log = "this renderer can't raytrace: showing the raster view"
+    ]
+
+    prism.camera = 1
+    prism.py = 2600
+    prism.pz = 8500
+    prism.rx = -14000
+
+    prism.light = 0             // sun
+    prism.rx = -50000
+    prism.ry = 40000
+    prism.color = 0xFFF0DD
+
+    prism.light = 1             // warm lamp that wanders around
+    lamp = prism.sel
+    prism.py = 2500
+    prism.color = 0xFF9050
+    prism.range = 9000
+
+    prism.spawn = 3             // floor
+    prism.sx = 30000
+    prism.sz = 30000
+    prism.py = -1000
+    prism.tex = 1
+    prism.color = 0xC8C8D0
+    prism.reflect = 250
+
+    prism.spawn = 2             // big mirror ball
+    prism.sx = 2400
+    prism.sy = 2400
+    prism.sz = 2400
+    prism.py = 200
+    prism.color = 0xE8ECF0
+    prism.reflect = 900
+
+    prism.spawn = 2
+    o1 = prism.sel
+    prism.sx = 900
+    prism.sy = 900
+    prism.sz = 900
+    prism.py = -550
+    prism.color = 0xFF4A4A
+    prism.reflect = 150
+    prism.spawn = 2
+    o2 = prism.sel
+    prism.sx = 900
+    prism.sy = 900
+    prism.sz = 900
+    prism.py = -550
+    prism.color = 0x4AE070
+    prism.reflect = 150
+    prism.spawn = 2
+    o3 = prism.sel
+    prism.sx = 900
+    prism.sy = 900
+    prism.sz = 900
+    prism.py = -550
+    prism.color = 0x4A80FF
+    prism.reflect = 150
+
+    prism.spawn = 1             // gold cube
+    cube = prism.sel
+    prism.px = 3800
+    prism.pz = -2600
+    prism.sx = 1400
+    prism.sy = 1400
+    prism.sz = 1400
+    prism.py = -300
+    prism.color = 0xFFC040
+    prism.tex = 1
+    prism.reflect = 300
+
+    prism.log = "raytrace demo ready: R toggles raytracing"
+
+    def frame (id 1)
+    t = prism.ms
+    k = t / 14                  // one orbit every 256 x 14 ms
+    j = k / 256
+    j * 256
+    k = k - j                   // k = k mod 256
+
+    prism.sel = o1
+    ang = k
+    jump (func orbit)
+    prism.sel = o2
+    ang = k + 85
+    jump (func orbit)
+    prism.sel = o3
+    ang = k + 170
+    jump (func orbit)
+
+    prism.sel = cube
+    v = t * 50
+    prism.ry = v
+    v = t * 23
+    prism.rx = v
+
+    prism.sel = lamp            // lamp circles the other way, slower
+    k = t / 40
+    j = k / 256
+    j * 256
+    k = k - j
+    v = sine(k)
+    v - 100
+    v * 45
+    prism.pz = v
+    ang = k + 64
+    v = sine(ang)
+    v - 100
+    v * 45
+    prism.px = v
+
+    r = prism.keys(21)          // R: toggle on press, not while held
+    if r = 1 [
+        if last = 0 [
+            if m = 0 [
+                m = 1
+            else
+                m = 0
+            ]
+            prism.mode = m
+            m = prism.mode
+        ]
+    ]
+    last = r
+
+    prism.frame = 1
+    if prism.quit = 1 [
+        kill 0
+    ]
+    if prism.keys(41) = 1 [
+        kill 0
+    ]
+    jump (id 1)
+]

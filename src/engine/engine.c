@@ -10,10 +10,10 @@
 int p3d_engine_init(p3d_engine *engine, const p3d_engine_desc *desc)
 {
     p3d_window_desc win;
+    int i, named = desc->renderer != NULL && desc->renderer[0] != '\0';
     memset(engine, 0, sizeof(*engine));
-    engine->backend = p3d_render_find(desc->renderer);
-    if (engine->backend == NULL) {
-        P3D_ERROR("no render backend named '%s'; this build has:", desc->renderer ? desc->renderer : "");
+    if (named && p3d_render_find(desc->renderer) == NULL) {
+        P3D_ERROR("no render backend named '%s'; this build has:", desc->renderer);
         p3d_render_list_backends();
         return 0;
     }
@@ -22,9 +22,17 @@ int p3d_engine_init(p3d_engine *engine, const p3d_engine_desc *desc)
     win.title = desc->title ? desc->title : "Prism3D";
     win.width = desc->width > 0 ? desc->width : 960;
     win.height = desc->height > 0 ? desc->height : 720;
-    win.surface = engine->backend->surface;
-    if (!p3d_platform_init(&win)) return 0;
-    if (!p3d_render_init(engine->backend)) { p3d_platform_shutdown(); return 0; }
+    /* A named backend is tried alone; otherwise every backend, best first, until one starts. */
+    for (i = 0; ; ++i) {
+        const p3d_render_backend *b = named ? (i == 0 ? p3d_render_find(desc->renderer) : NULL) : p3d_render_backend_at(i);
+        if (b == NULL) { P3D_ERROR("no render backend could start"); return 0; }
+        win.surface = b->surface;
+        if (p3d_platform_init(&win)) {
+            if (p3d_render_init(b)) { engine->backend = b; break; }
+            p3d_platform_shutdown();
+        }
+        if (!named) P3D_WARN("renderer %s unavailable, trying the next one", b->name);
+    }
     if (!p3d_scene_init(&engine->scene, desc->max_objects > 0 ? desc->max_objects : 1024)) return 0;
     p3d_modules_init(engine);
     engine->start_ms = engine->last_ms = p3d_platform_ticks_ms();

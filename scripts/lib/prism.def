@@ -34,4 +34,8 @@ port prism.mousex (read)
 port prism.mousey (read)
 port prism.buttons (read)       * bit 0 left, bit 1 middle, bit 2 right *
 port prism.log (write, str)     * print a line to the engine log *
+port prism.mode (read, write)   * 0 raster, 1 raytrace; reads back 0 if the renderer can't raytrace *
+port prism.rtok (read)          * 1 if the renderer can raytrace *
+port prism.bounces (write)      * raytraced reflection bounces, 0-4 (default 2) *
+port prism.reflect (write)      * mirror amount of the selected mesh, 0-1000 (raytrace only) *
 mem prism.keys (length 512, flag R) * one byte per key (USB HID usage / SDL scancode), 1 = held *

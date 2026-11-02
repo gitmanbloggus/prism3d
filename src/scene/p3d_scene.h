@@ -44,6 +44,8 @@ typedef struct {
     float ambient[3];
     p3d_mesh_id primitives[P3D_PRIM_COUNT];
     p3d_texture_id checker;               /* built-in texture, id 1 for scripts */
+    int raytrace;                         /* 1 = raytrace frames when the backend can */
+    int rt_bounces;
 } p3d_scene;
 
 int  p3d_scene_init(p3d_scene *scene, int capacity);   /* after p3d_render_init */

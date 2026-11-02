@@ -8,4 +8,4 @@ PLATFORM_CFLAGS := -sUSE_SDL=2
 PLATFORM_LIBS   := -sUSE_SDL=2 -sMIN_WEBGL_VERSION=1 -sMAX_WEBGL_VERSION=1 -sALLOW_MEMORY_GROWTH=1 \
                    --preload-file scripts/demo.bin@scripts/demo.bin
 RUN             := emrun
-RENDERERS       := gles2 soft
+RENDERERS       := gles3 gles2 soft   # WebGL 2 / WebGL 1 / canvas

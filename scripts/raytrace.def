@@ -1,0 +1,15 @@
+* raytrace.def: variables for raytrace.sipl *
+bin sine (file sine.dat)   * 512 bytes = two periods of 100 + 100 sin(2 pi i / 256), so index + 64 (cosine) never wraps *
+int o1
+int o2
+int o3
+int cube
+int lamp
+int t
+int k
+int j
+int ang
+int v
+int r
+int last
+int m

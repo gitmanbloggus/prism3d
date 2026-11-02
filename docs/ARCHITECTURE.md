@@ -39,13 +39,42 @@ The dependencies only point downward, and nothing below `engine/` knows about sc
 |---|---|---|
 | T0 `P3D_TIER_SOFT` | CPU rasterizer | ✓ `soft`: Gouraud, perspective-correct textures, z-buffer, near clipping |
 | T1 `P3D_TIER_FIXED` | fixed-function GPUs | planned: GL 1.x, D3D7, PS2 GS, Dreamcast PVR |
-| T2 `P3D_TIER_SHADER` | programmable | ✓ `gles2`: GLES2/WebGL 1, per-pixel and per-vertex programs |
-| T3 `P3D_TIER_MODERN` | explicit / custom | planned: Vulkan 1.0, Wii GX + TEV |
+| T2 `P3D_TIER_SHADER` | programmable | ✓ `gles2`: GLES2/WebGL 1. ✓ `gles3`: GLES3/WebGL 2, uniform blocks, raytracing |
+| T3 `P3D_TIER_MODERN` | explicit / custom | ✓ `vulkan`: Vulkan 1.0 core, raytracing. Planned: Wii GX + TEV |
+
+With no `--render`, the engine tries the backends best first (vulkan → gles3 → gles2 → soft) and uses
+the first one that starts, so one binary runs from a modern GPU down to no GPU at all.
 
 - A backend fills in a `p3d_render_backend` struct and reports its `p3d_caps`.
 - Materials ask for a shading level. `p3d_render_resolve_shading` steps it down to what the tier can do:
   per-pixel → per-vertex → flat → unlit.
 - Games branch on `p3d_render_caps()`, never on backend names. Scripts read `prism.tier`.
+
+### Shaders
+
+`gles3` and `vulkan` share their GLSL in `src/render/shaders/`. Each file compiles as GLSL ES 3.00, or
+as GLSL 450 with `-DP3D_VK`, and the differences are kept to a few macros.
+
+`tools/shaders.py` generates the headers at build time:
+- `shaders_gles.h` embeds the source, one string per line, so no literal goes past C99's 4095-character limit.
+- `shaders_vk.h` holds SPIR-V compiled with `glslc`.
+
+Vulkan conventions: `mesh.vert` flips y and remaps z to Vulkan's clip space. Meshes stay
+counter-clockwise, and the swapchain is UNORM so colours match GL.
+
+### Raytracing
+
+A backend that sets `caps.raytracing` and implements `raytrace()` can draw a whole frame by tracing
+instead of rasterizing. Today that is `gles3` and `vulkan`.
+
+- The scene hands it up to 64 analytic primitives (`p3d_rt_scene`): unit sphere, box and plane plus
+  inverse transforms.
+- One full-screen pass (`raytrace.frag`) does shadow rays for every light, Phong specular,
+  the built-in checker, and up to 4 mirror bounces (`material.reflect`).
+- It works on any GLES3 or Vulkan 1.0 GPU because it uses no RT hardware. A `VK_KHR_ray_query`
+  path that could also trace triangle meshes is the natural T3+ follow-up.
+- Backends without raytracing simply rasterize the same scene. Scripts check `prism.rtok` or read
+  `prism.mode` back.
 
 To add a backend:
 1. Write `src/render/<x>/render_<x>.c` that exports `p3d_backend_<x>`.
@@ -73,8 +102,10 @@ determinism rule it is only written during the `prism.frame` doorbell.
 
 ## Roadmap
 
-1. **M1 (this): done.** GLES2 + software tiers, SDL2 platform, primitives and components, SIPL scripting, Linux build.
+1. **M1: done.** GLES2 + software tiers, SDL2 platform, primitives and components, SIPL scripting, Linux build.
    Web config written but **not yet built or run** (no emcc here).
+1. **M1.5: done.** GLES3 (T2) and Vulkan 1.0 (T3) backends with shared shaders, backend fallback, and
+   GPU raytracing of primitives (`scripts/raytrace.sipl`).
 2. M2: run the web build; glTF + PNG dev loading; the asset cooker (`tools/cook`) and pack format; fixed-point math option.
 3. M3: T1 backend (GL 1.x) and a Windows XP build (MinGW + SDL 2.0.x).
 4. M4: in-engine editor module; script hot reload.

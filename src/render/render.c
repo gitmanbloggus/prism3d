@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef P3D_WITH_VULKAN
+extern const p3d_render_backend p3d_backend_vulkan;
+#endif
+#ifdef P3D_WITH_GLES3
+extern const p3d_render_backend p3d_backend_gles3;
+#endif
 #ifdef P3D_WITH_GLES2
 extern const p3d_render_backend p3d_backend_gles2;
 #endif
@@ -14,6 +20,12 @@ extern const p3d_render_backend p3d_backend_soft;
 
 /* Best first. */
 static const p3d_render_backend *const backends[] = {
+#ifdef P3D_WITH_VULKAN
+    &p3d_backend_vulkan,
+#endif
+#ifdef P3D_WITH_GLES3
+    &p3d_backend_gles3,
+#endif
 #ifdef P3D_WITH_GLES2
     &p3d_backend_gles2,
 #endif
@@ -35,6 +47,11 @@ const p3d_render_backend *p3d_render_find(const char *name)
     return NULL;
 }
 
+const p3d_render_backend *p3d_render_backend_at(int index)
+{
+    return index >= 0 && index < (int)P3D_ARRAY_LEN(backends) ? backends[index] : NULL;
+}
+
 void p3d_render_list_backends(void)
 {
     size_t i;
@@ -47,8 +64,9 @@ int p3d_render_init(const p3d_render_backend *backend)
     if (backend == NULL || !backend->init(&caps)) return 0;
     caps.tier = backend->tier;
     active = backend;
-    P3D_INFO("renderer: %s (tier T%d, %d lights, max texture %d)", backend->name, (int)caps.tier,
-             caps.max_lights, caps.max_texture_size);
+    caps.raytracing = caps.raytracing && backend->raytrace != NULL;
+    P3D_INFO("renderer: %s (tier T%d, %d lights, max texture %d%s)", backend->name, (int)caps.tier,
+             caps.max_lights, caps.max_texture_size, caps.raytracing ? ", raytracing" : "");
     return 1;
 }
 
@@ -80,6 +98,7 @@ p3d_texture_id p3d_render_texture_create(int width, int height, const uint8_t *r
 void p3d_render_texture_destroy(p3d_texture_id texture) { active->texture_destroy(texture); }
 void p3d_render_begin_frame(const p3d_frame *frame) { active->begin_frame(frame); }
 void p3d_render_draw(const p3d_draw *draw) { active->draw(draw); }
+void p3d_render_raytrace(const p3d_rt_scene *scene) { if (caps.raytracing) active->raytrace(scene); }
 void p3d_render_end_frame(void) { active->end_frame(); }
 
 int p3d_render_save_screenshot(const char *path, int width, int height)

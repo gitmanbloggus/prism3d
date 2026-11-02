@@ -8,8 +8,8 @@ TARGET   ?= linux
 SEB_DIR  ?= siplaseb
 BUILD    := build/$(TARGET)
 
-# Engine modules compiled in. Render backends are named render_<x>.
-RENDERERS ?= gles2 soft
+# Render backends compiled in (src/render/<x>/render_<x>.c), tried best first at startup.
+RENDERERS ?= vulkan gles3 gles2 soft
 
 include config/$(TARGET).mk
 
@@ -27,7 +27,13 @@ DEMO_SRC := games/demo/main.c
 P3D_DEFS := $(foreach r,$(RENDERERS),-DP3D_WITH_$(shell echo $(r) | tr a-z A-Z))
 CFLAGS   ?= -O2 -g
 WARN     := -Wall -Wextra -Wpedantic -Wno-unused-parameter
-ALL_CFLAGS := $(CFLAGS) $(WARN) $(P3D_DEFS) $(PLATFORM_CFLAGS) -I$(SEB_DIR)/c/src
+ALL_CFLAGS := $(CFLAGS) $(WARN) $(P3D_DEFS) $(PLATFORM_CFLAGS) -I$(SEB_DIR)/c/src -I$(BUILD)/gen
+
+# Shaders (src/render/shaders) are shared by gles3 and vulkan; tools/shaders.py embeds them.
+SHADER_SRC := $(wildcard src/render/shaders/*)
+GEN_HDRS := $(if $(filter gles3,$(RENDERERS)),$(BUILD)/gen/shaders_gles.h) \
+            $(if $(filter vulkan,$(RENDERERS)),$(BUILD)/gen/shaders_vk.h)
+PLATFORM_LIBS += $(if $(filter vulkan,$(RENDERERS)),$(VULKAN_LIBS)) $(if $(filter gles3,$(RENDERERS)),$(GLES_LIBS),$(if $(filter gles2,$(RENDERERS)),$(GLES_LIBS)))
 
 OBJ_P3D  := $(P3D_SRC:%.c=$(BUILD)/%.o)
 OBJ_SEB  := $(SEB_SRC:$(SEB_DIR)/%.c=$(BUILD)/seb/%.o)
@@ -45,8 +51,13 @@ $(BUILD)/libprism.a: $(OBJ_P3D) $(OBJ_SEB)
 $(BUILD)/$(DEMO_BIN): $(OBJ_DEMO) $(BUILD)/libprism.a $(SCRIPTS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJ_DEMO) $(BUILD)/libprism.a $(PLATFORM_LIBS)
 
+$(BUILD)/gen/shaders_gles.h: $(SHADER_SRC) tools/shaders.py
+	python3 tools/shaders.py gles $@
+$(BUILD)/gen/shaders_vk.h: $(SHADER_SRC) tools/shaders.py
+	python3 tools/shaders.py vk $@
+
 # engine: C99
-$(BUILD)/%.o: %.c
+$(BUILD)/%.o: %.c | $(GEN_HDRS)
 	@mkdir -p $(dir $@)
 	$(CC) -std=c99 $(ALL_CFLAGS) -MMD -MP -c -o $@ $<
 

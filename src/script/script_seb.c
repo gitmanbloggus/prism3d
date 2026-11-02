@@ -231,6 +231,41 @@ static int w_ambient(void *d, uint64_t v, const uint8_t *str, size_t length, cha
     return 0;
 }
 
+static int r_mode(void *d, uint64_t *v, char *m, size_t n)
+{
+    DEV(d); (void)m; (void)n;
+    *v = (uint64_t)(s->engine->scene.raytrace && p3d_render_caps()->raytracing);
+    return 0;
+}
+
+static int w_mode(void *d, uint64_t v, const uint8_t *str, size_t length, char *m, size_t n)
+{
+    DEV(d); NOSTR;
+    if (v > 1) { snprintf(m, n, "prism.mode: unknown mode %" PRIu64 " (0 raster, 1 raytrace)", v); return SEB_DEVICE_ERROR; }
+    s->engine->scene.raytrace = (int)v;
+    return 0;
+}
+
+static int r_rtok(void *d, uint64_t *v, char *m, size_t n) { (void)d; (void)m; (void)n; *v = (uint64_t)p3d_render_caps()->raytracing; return 0; }
+
+static int w_bounces(void *d, uint64_t v, const uint8_t *str, size_t length, char *m, size_t n)
+{
+    DEV(d); NOSTR;
+    if (v > 4) { snprintf(m, n, "prism.bounces: %" PRIu64 " is more than 4", v); return SEB_DEVICE_ERROR; }
+    s->engine->scene.rt_bounces = (int)v;
+    return 0;
+}
+
+static int w_reflect(void *d, uint64_t v, const uint8_t *str, size_t length, char *m, size_t n)
+{
+    DEV(d); p3d_object *o; NOSTR;
+    float r;
+    if (!(o = selected_mesh(s, "reflect", m, n))) return SEB_DEVICE_ERROR;
+    r = milli(s, v);
+    o->mesh.material.reflect = r < 0.0f ? 0.0f : r > 1.0f ? 1.0f : r;
+    return 0;
+}
+
 static int w_log(void *d, uint64_t v, const uint8_t *str, size_t length, char *m, size_t n)
 {
     DEV(d); (void)v; (void)m; (void)n;
@@ -267,7 +302,11 @@ static const seb_register registers[] = {
     { "mousex", R, r_mousex, NULL },
     { "mousey", R, r_mousey, NULL },
     { "buttons", R, r_buttons, NULL },
-    { "log", W | SEB_PORT_STR, NULL, w_log }
+    { "log", W | SEB_PORT_STR, NULL, w_log },
+    { "mode", R | W, r_mode, w_mode },
+    { "rtok", R, r_rtok, NULL },
+    { "bounces", W, NULL, w_bounces },
+    { "reflect", W, NULL, w_reflect }
 };
 static const seb_shared_region regions[] = { { "prism.keys", P3D_KEY_COUNT } };
 

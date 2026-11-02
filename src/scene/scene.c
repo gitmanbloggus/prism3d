@@ -1,6 +1,7 @@
 #include "p3d_scene.h"
 #include "../core/p3d_core.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,6 +29,7 @@ int p3d_scene_init(p3d_scene *scene, int capacity)
     scene->ambient[0] = scene->ambient[1] = scene->ambient[2] = 0.15f;
     for (k = 1; k < P3D_PRIM_COUNT; ++k) scene->primitives[k] = p3d_primitive_mesh((p3d_primitive)k);
     scene->checker = make_checker();
+    scene->rt_bounces = 2;
     return 1;
 }
 
@@ -140,6 +142,30 @@ void p3d_scene_render_begin(p3d_scene *scene, int width, int height)
                   : p3d_v3_normalize(p3d_m4_mul_dir(p3d_m4_rotate_xyz(o->rotation), p3d_v3(0, 0, -1)));
     }
     p3d_render_begin_frame(&f);
+    if (scene->raytrace && p3d_render_caps()->raytracing) {
+        static p3d_rt_scene rt;    /* ~5 KB: keep it off small stacks */
+        rt.camera_to_world = p3d_m4_inverse_rigid(f.view);
+        rt.tan_half_fov_y = tanf((cam ? cam->camera.fov_y : 1.0f) * 0.5f);
+        rt.bounces = scene->rt_bounces;
+        rt.prim_count = 0;
+        for (i = 0; i < scene->capacity && rt.prim_count < P3D_RT_MAX_PRIMS; ++i) {
+            const p3d_object *o = &scene->objects[i];
+            p3d_rt_prim *p;
+            int k;
+            if (!o->used || !(o->components & P3D_COMP_MESH)) continue;
+            for (k = 1; k < P3D_PRIM_COUNT; ++k)
+                if (o->mesh.mesh == scene->primitives[k]) break;
+            if (k == P3D_PRIM_COUNT) continue;   /* only primitives can be traced for now */
+            p = &rt.prims[rt.prim_count++];
+            p->kind = k == P3D_PRIM_CUBE ? P3D_RT_BOX : k == P3D_PRIM_SPHERE ? P3D_RT_SPHERE : P3D_RT_PLANE;
+            p->world_to_local = p3d_m4_inverse_trs(o->position, o->rotation, o->scale);
+            memcpy(p->color, o->mesh.material.color, sizeof(p->color));
+            p->reflect = o->mesh.material.reflect;
+            p->checker = o->mesh.material.texture != 0 && o->mesh.material.texture == scene->checker;
+        }
+        p3d_render_raytrace(&rt);
+        return;
+    }
     for (i = 0; i < scene->capacity; ++i) {
         const p3d_object *o = &scene->objects[i];
         p3d_draw d;

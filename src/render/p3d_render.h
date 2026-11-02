@@ -24,6 +24,7 @@ typedef struct {
     int npot_textures;       /* non-power-of-two textures allowed */
     int max_lights;
     int per_pixel_lighting;
+    int raytracing;          /* implements raytrace(): GPU tracing of the scene's primitives */
 } p3d_caps;
 
 typedef struct {
@@ -43,6 +44,7 @@ typedef struct {
     float color[4];
     p3d_texture_id texture;
     p3d_shading shading;
+    float reflect;           /* 0..1 mirror amount; used by the raytraced path */
 } p3d_material;
 
 #define P3D_MAX_LIGHTS 4
@@ -69,6 +71,25 @@ typedef struct {
     p3d_material material;   /* shading already resolved for the active tier */
 } p3d_draw;
 
+/* Raytraced frames: the scene as analytic primitives instead of triangles. */
+#define P3D_RT_MAX_PRIMS 64
+typedef enum { P3D_RT_SPHERE = 1, P3D_RT_BOX = 2, P3D_RT_PLANE = 3 } p3d_rt_kind;  /* = p3d_primitive */
+typedef struct {
+    p3d_rt_kind kind;
+    p3d_mat4 world_to_local;  /* inverse model matrix; shapes are unit-sized at the origin */
+    float color[3];
+    float reflect;
+    int checker;              /* the built-in checker texture */
+} p3d_rt_prim;
+
+typedef struct {
+    p3d_mat4 camera_to_world;
+    float tan_half_fov_y;
+    int bounces;              /* reflection bounces, 0..4 */
+    p3d_rt_prim prims[P3D_RT_MAX_PRIMS];
+    int prim_count;
+} p3d_rt_scene;
+
 /* A render backend. Backends register themselves in render.c's table; with the dynamic module loader
  * a backend can also live in a shared library exporting this struct. */
 typedef struct p3d_render_backend {
@@ -83,6 +104,9 @@ typedef struct p3d_render_backend {
     void (*texture_destroy)(p3d_texture_id texture);
     void (*begin_frame)(const p3d_frame *frame);
     void (*draw)(const p3d_draw *draw);
+    /* Trace the whole frame (between begin_frame and end_frame), instead of draws. NULL if the
+     * backend can't (caps.raytracing = 0). */
+    void (*raytrace)(const p3d_rt_scene *scene);
     void (*end_frame)(void);
     /* Copy the last frame as RGBA8, top row first (screenshots/tests). May be NULL. */
     int  (*read_pixels)(int width, int height, uint8_t *rgba);
@@ -90,6 +114,7 @@ typedef struct p3d_render_backend {
 
 /* ---- front end ---- */
 const p3d_render_backend *p3d_render_find(const char *name);    /* NULL = best available */
+const p3d_render_backend *p3d_render_backend_at(int index);     /* best first; NULL past the end */
 void p3d_render_list_backends(void);
 int  p3d_render_init(const p3d_render_backend *backend);         /* after the platform window exists */
 void p3d_render_shutdown(void);
@@ -103,6 +128,7 @@ p3d_texture_id p3d_render_texture_create(int width, int height, const uint8_t *r
 void           p3d_render_texture_destroy(p3d_texture_id texture);
 void p3d_render_begin_frame(const p3d_frame *frame);
 void p3d_render_draw(const p3d_draw *draw);
+void p3d_render_raytrace(const p3d_rt_scene *scene);
 void p3d_render_end_frame(void);
 int  p3d_render_save_screenshot(const char *path, int width, int height);   /* binary PPM */
 

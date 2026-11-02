@@ -342,6 +342,6 @@ const p3d_render_backend p3d_backend_gles2 = {
     gles2_init, gles2_shutdown,
     gles2_mesh_create, gles2_mesh_destroy,
     gles2_texture_create, gles2_texture_destroy,
-    gles2_begin_frame, gles2_draw, gles2_end_frame,
+    gles2_begin_frame, gles2_draw, NULL, gles2_end_frame,
     gles2_read_pixels
 };

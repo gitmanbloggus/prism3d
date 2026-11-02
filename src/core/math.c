@@ -88,6 +88,14 @@ p3d_mat4 p3d_m4_inverse_rigid(p3d_mat4 m)
     return r;
 }
 
+p3d_mat4 p3d_m4_inverse_trs(p3d_vec3 t, p3d_vec3 r, p3d_vec3 s)
+{
+    /* (T R S)^-1 = S^-1 R^T T^-1 */
+    p3d_mat4 rt = p3d_m4_inverse_rigid(p3d_m4_rotate_xyz(r));
+    p3d_vec3 inv_s = p3d_v3(s.x != 0.0f ? 1.0f / s.x : 0.0f, s.y != 0.0f ? 1.0f / s.y : 0.0f, s.z != 0.0f ? 1.0f / s.z : 0.0f);
+    return p3d_m4_mul(p3d_m4_scale(inv_s), p3d_m4_mul(rt, p3d_m4_translate(p3d_v3_scale(t, -1.0f))));
+}
+
 p3d_vec4 p3d_m4_mul_v4(p3d_mat4 m, p3d_vec4 v)
 {
     p3d_vec4 r;
