@@ -1,0 +1,37 @@
+* prism.def: the Prism3D engine device. Add it to any SIPL script the engine runs. *
+* Units: positions and scales in thousandths (1000 = 1.0), angles in thousandths of a degree, *
+* times in milliseconds, colours as 0xRRGGBB. The world is right-handed, +Y up, cameras look down -Z. *
+port prism.frame (write)        * doorbell: end this frame; the script resumes next frame *
+port prism.quit (read)          * 1 once the window was closed *
+port prism.ms (read)            * milliseconds since the engine started *
+port prism.dt (read)            * milliseconds the last frame took *
+port prism.tier (read)          * render tier: 0 software, 1 fixed-function, 2 shaders, 3 modern *
+port prism.self (read)          * id of the object this script is attached to *
+port prism.sel (read, write)    * the selected object id; the transform and look registers act on it *
+port prism.spawn (write)        * create a primitive (1 cube, 2 sphere, 3 plane) and select it *
+port prism.camera (write)       * create a camera (write 1 to also make it the active one) and select it *
+port prism.light (write)        * create a light (0 directional, 1 point) and select it *
+port prism.destroy (write)      * destroy an object by id *
+port prism.active (write)       * make object id the active camera *
+port prism.px (read, write)
+port prism.py (read, write)
+port prism.pz (read, write)
+port prism.rx (read, write)
+port prism.ry (read, write)
+port prism.rz (read, write)
+port prism.sx (read, write)
+port prism.sy (read, write)
+port prism.sz (read, write)
+port prism.color (read, write)  * mesh colour, or a light's colour *
+port prism.shade (write)        * 0 unlit, 1 flat, 2 per vertex, 3 per pixel; falls back per tier *
+port prism.tex (write)          * texture id: 0 none, 1 built-in checker, or from prism.texload *
+port prism.texload (write, str) * load an image file; its id is then in prism.texid (0 = failed) *
+port prism.texid (read)
+port prism.range (read, write)  * point light range *
+port prism.clear (write)        * background colour *
+port prism.ambient (write)      * ambient light colour *
+port prism.mousex (read)
+port prism.mousey (read)
+port prism.buttons (read)       * bit 0 left, bit 1 middle, bit 2 right *
+port prism.log (write, str)     * print a line to the engine log *
+mem prism.keys (length 512, flag R) * one byte per key (USB HID usage / SDL scancode), 1 = held *

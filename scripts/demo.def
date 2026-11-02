@@ -1,0 +1,7 @@
+* demo.def: variables for demo.sipl *
+int cube
+int ball
+int t
+int k
+int bx
+int bz
